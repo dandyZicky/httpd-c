@@ -78,11 +78,16 @@ int main(int argc, char *argv[])
     return 0;
   } else {
     printf("Client accepted!\n");
-    printf("Client: %s", inet_ntoa(client.sin_addr));
+
+    // Appeared to be deprecated
+    // printf("Client: %s", inet_ntoa(client.sin_addr/
+
+    char pAddr [15]; 
+    inet_ntop(AF_INET, &client.sin_addr, pAddr, sizeof(pAddr));
+    printf("Client: %s", pAddr);
   }
 
   closesocket(sock);
   WSACleanup();
   return EXIT_SUCCESS;
-
 }
