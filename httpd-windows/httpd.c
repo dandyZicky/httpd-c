@@ -1,10 +1,13 @@
 #include <stdlib.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <string.h>
 #include <windef.h>
 #include <stdio.h>
 
 #define LISTENING_ADDR "127.0.0.1"
+#define BUF_LEN_DEFAULT 512
+#define BUF_LEN_LARGE 1024 
 
 char* err;
 
@@ -34,7 +37,7 @@ int init_srv(struct sockaddr_in* srv, int port_num) {
     return 0;
   }
 
-  if (listen(sock, 5) == SOCKET_ERROR) {
+  if (listen(sock, 8) == SOCKET_ERROR) {
     fprintf(stderr, "listen(): Listening error\n");
     return 0;
   }
@@ -68,11 +71,11 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  int client_length = sizeof(client);
+  int client_length = sizeof(struct sockaddr_in);
   SOCKET accepting_client = accept(sock, (struct sockaddr*) &client, &client_length);
   // SOCKET accepting_client = accept(sock, NULL, NULL);
 
-  if (!accepting_client) {
+  if (accepting_client == INVALID_SOCKET) {
     fprintf(stderr, "Error accepting client: %d\n", WSAGetLastError());
     return 0;
   } else {
@@ -83,10 +86,58 @@ int main(int argc, char *argv[])
 
     char pAddr [15]; 
     inet_ntop(AF_INET, &client.sin_addr, pAddr, sizeof(pAddr));
-    printf("Client: %s", pAddr);
+    printf("Client: %s\n", pAddr);
   }
 
+  /*  
+   * Congrats, to me, by me. Longest hello world to implement
+   * TODO: how do you map certain routes and request?
+   *       are you even sure the current code is what it is suppose to be like
+   *       when returning a 200 containing basic HTML?
+   */
+
+  char recv_buf[BUF_LEN_LARGE];
+  int recv_buf_len = BUF_LEN_LARGE;
+
+  const char* headers =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/html\r\n"
+      "Connection: close\r\n"
+      "\r\n";
+  
+  const char* body = "<html><body><h1>Hello, World!</h1></body></html>";
+  
+  char reply[BUF_LEN_LARGE];
+  snprintf(reply, sizeof(reply), "%s%s", headers, body);
+  
+  int receive_result;
+  do {
+      if ((receive_result = recv(accepting_client, recv_buf, recv_buf_len, 0)) > 0) {
+          printf("Bytes received: %d\n", receive_result);
+          printf("Message: %s\n", recv_buf);
+          
+          int send_result = send(accepting_client, reply, strlen(reply), 0);
+          if (send_result == SOCKET_ERROR) {
+              fprintf(stderr, "Send failed with error: %d\n", WSAGetLastError());
+          } else {
+              printf("Reply sent\n");
+              closesocket(accepting_client); // The part where i'm on the fence about
+          }
+      } else if (receive_result == 0) {
+          printf("Socket is closing...\n");
+      } else {
+          fprintf(stderr, "Error receiving buffer: %d\n", receive_result);
+          closesocket(sock);
+          closesocket(accepting_client);
+          WSACleanup();
+          return 0;
+      }
+    printf("Receive Result State: %d\n", receive_result);
+  } while (receive_result > 0);
+  
   closesocket(sock);
+  closesocket(accepting_client);
   WSACleanup();
+  printf("sockets closed \n");
   return EXIT_SUCCESS;
 }
