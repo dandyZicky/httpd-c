@@ -1,5 +1,5 @@
 # httpd-c
-~~My journey on learning networking basics~~ An attempt to learn how does a HTTP server operates.
+~~My journey on learning networking basics~~ An attempt to learn how does an HTTP server operates.
 
 Right now, I have implemented how to:
   - [x] program sockets
