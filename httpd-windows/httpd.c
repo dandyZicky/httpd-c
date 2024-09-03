@@ -4,13 +4,15 @@
 #include <windef.h>
 #include <stdio.h>
 
-#define LISTENING_ADDR "0.0.0.0"
+#define LISTENING_ADDR "127.0.0.1"
 
 char* err;
 
+/*** Is there an easy way to see the docs in Windows like linux's cli man pages? ***/
+
 int init_srv(struct sockaddr_in* srv, int port_num) {
   SOCKET sock = INVALID_SOCKET;
-  IN_ADDR ip_value;
+  // IN_ADDR ip_value;
 
   sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -21,13 +23,12 @@ int init_srv(struct sockaddr_in* srv, int port_num) {
 
   srv->sin_family = AF_INET;
 
-  if (!inet_pton(AF_INET, LISTENING_ADDR, &ip_value)) {
-    err = "inet_pton(): network type conversion failed\n";
-    return 0;
+  if (!inet_pton(AF_INET, LISTENING_ADDR, &srv->sin_addr)) {  // inet_addr() is deprecated
+    err = "inet_pton(): network type conversion failed\n";    // I want to know what is assigned
+    return 0;                                                 // to ip_value
   }
 
-  srv->sin_addr = ip_value;
-  srv->sin_port = port_num;
+  srv->sin_port = htons(port_num);
 
   if (bind(sock, (struct sockaddr* ) srv, sizeof(*srv))) {
     err = "bind(): binding error";
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
   port = argv[1];
 
   WSADATA wsaData = {0};
-  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData); // Windows Socket API (WSA duh)
 
   if (result != 0) {
     printf("WSAStartup failed: %d\n", result);
@@ -62,12 +63,26 @@ int main(int argc, char *argv[])
   }
 
   printf("Listening on %s:%s\n", LISTENING_ADDR, port);
-
-  if (!init_srv(&srv, atoi(port))){
+  SOCKET sock = init_srv(&srv, atoi(port));
+  if (!sock){
     fprintf(stderr, "%s\n", err);
     return 0;
   }
 
+  int client_length = sizeof(client);
+  SOCKET accepting_client = accept(sock, (struct sockaddr*) &client, &client_length);
+  // SOCKET accepting_client = accept(sock, NULL, NULL);
+
+  if (!accepting_client) {
+    fprintf(stderr, "Error accepting client: %d\n", WSAGetLastError());
+    return 0;
+  } else {
+    printf("Client accepted!\n");
+    printf("Client: %s", inet_ntoa(client.sin_addr));
+  }
+
+  closesocket(sock);
+  WSACleanup();
   return EXIT_SUCCESS;
 
 }
