@@ -22,13 +22,12 @@ int init_srv(struct sockaddr_in* srv, int port_num) {
   }
 
   srv->sin_family = AF_INET;
+  srv->sin_port = htons(port_num);
 
   if (!inet_pton(AF_INET, LISTENING_ADDR, &srv->sin_addr)) {  // inet_addr() is deprecated
     err = "inet_pton(): network type conversion failed\n";    // I want to know what is assigned
     return 0;                                                 // to ip_value
   }
-
-  srv->sin_port = htons(port_num);
 
   if (bind(sock, (struct sockaddr* ) srv, sizeof(*srv))) {
     err = "bind(): binding error";
